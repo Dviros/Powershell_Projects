@@ -1,0 +1,207 @@
+######## Powershell Bitlocker Automation - By Dvir S. - March 2017 #########
+
+#Needed Variables
+$Username = $env:USERNAME
+$MachineName = $env:COMPUTERNAME
+$Machine2 = (Get-WmiObject -Class Win32_ComputerSystem -Property Name).Name
+$Date = Get-Date
+$OSVersion = [Version](Get-ItemProperty -Path "$($Env:Windir)\System32\hal.dll" -ErrorAction SilentlyContinue).VersionInfo.FileVersion.Split()[0]
+$OSmajor = $OSVersion.Major
+
+
+############################################################################
+# Admin privliges
+if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "Please click yes on the UAC screen. Don't worry."
+    Wait-Event -Timeout 2
+    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
+    }
+
+Write-Host "Gathering important info..."
+try{
+    $TPMstatus = Get-Tpm | Select -ExpandProperty TPMPresent
+    }
+catch{
+    $TPMstatus = "False"
+    }
+Write-Host "Doing cyber stuff..."
+try{
+    $volumeStatus = Get-BitLockerVolume  | select -ExpandProperty Volumestatus
+    }
+catch{
+    }
+if ($volumeStatus -notmatch "FullyEncrypted"){
+    $volumeStatus = "False"
+    }
+try{
+    $BitlockerStatus = Get-BitLockerVolume  | select -ExpandProperty protectionstatus
+    }
+catch{
+    }
+if ($BitlockerStatus -notmatch "On"){
+    $BitlockerStatus = "Off"
+    }
+
+function encrypt(){
+    Enable-BitLocker -MountPoint C: -TpmAndPinProtector -Pin $Encrypted -SkipHardwareTest
+    do {
+        $Volume = Get-BitLockerVolume -MountPoint C:
+        Write-Progress -Activity "Encrypting volume $($Volume.MountPoint)" -Status "Encryption Progress:" -PercentComplete $Volume.EncryptionPercentage
+        Start-Sleep -Seconds 1
+    }
+    until ($Volume.VolumeStatus -eq 'FullyEncrypted')
+    Write-Progress -Activity "Encrypting volume $($Volume.MountPoint)" -Status "Encryption Progress:" -Completed
+    #Dumping the recovery key to the DC
+    $Recoverykey = Get-BitLockerVolume | ? {$_.KeyProtector.KeyProtectorType -eq "RecoveryPassword"} | Select-Object MountPoint,@{Label='Key';Expression={"$($_.KeyProtector.RecoveryPassword)"}}
+    $Recoverykey | Out-File c:\windows\system32\RecoveryKey_$Machine2_$Username.txt
+    Copy-Item c:\windows\system32\RecoveryKey_$Machine2_$Username.txt \\DC_IP\Recovery_Keys\RecoveryKey_$Machine2_$Username.txt
+    }
+
+function encrypt7(){
+    Enable-BitLocker -MountPoint C: -TpmAndPinProtector -Pin $Encrypted -SkipHardwareTest
+    do {
+    $Volume = Get-BitLockerVolume -MountPoint C: 
+    Write-Progress -Activity "Encrypting volume $($Volume.MountPoint)" -Status "Encryption Progress:" -PercentComplete $Volume.EncryptionPercentage
+    Start-Sleep -Seconds 1
+    }
+    until ($Volume.VolumeStatus -eq 'FullyEncrypted')
+    Write-Progress -Activity "Encrypting volume $($Volume.MountPoint)" -Status "Encryption Progress:" -Completed
+    #Dumping the recovery key to the DC
+    $Recoverykey = Get-BitLockerVolume | ? {$_.KeyProtector.KeyProtectorType -eq "RecoveryPassword"} | Select-Object MountPoint,@{Label='Key';Expression={"$($_.KeyProtector.RecoveryPassword)"}}
+    $Recoverykey | Out-File c:\windows\system32\RecoveryKey_$Machine2_$Username.txt
+    Copy-Item c:\windows\system32\RecoveryKey_$Machine2_$Username.txt \\DC_IP\Recovery_Keys\RecoveryKey_$Machine2_$Username.txt
+    }
+
+#GUI
+Add-Type -AssemblyName System.Windows.Forms
+
+$Title = New-Object system.Windows.Forms.Form
+$Title.Text = "Bitlocker Encryption Script - By Dvir S."
+$Title.TopMost = $true
+$Title.Width = 385
+$Title.Height = 500
+$Title.FormBorderStyle = 'Fixed3D'
+
+
+$label2 = New-Object system.windows.Forms.Label
+$label2.Text = "Username: $Username. Machine: $MachineName. Date: $Date. Windows $OSmajor. The following script will enable Bitlocker on your computer and encrypt it. Please, Do not close it and allow it to run. Your PIN number needs to have at least 8 characters."
+$label2.Width = 295
+$label2.Height = 120
+$label2.location = new-object system.drawing.point(25,20)
+$label2.Font = "Microsoft Sans Serif,10,style=Bold"
+$Title.controls.Add($label2)
+
+$PIN_Box = New-Object system.windows.Forms.TextBox
+$PIN_Box.Width = 100
+$PIN_Box.Height = 20
+$PIN_Box.location = new-object system.drawing.point(220,181)
+$PIN_Box.Font = "Microsoft Sans Serif,10"
+$Title.controls.Add($PIN_Box)
+
+$PIN_BOX2 = New-Object system.windows.Forms.TextBox
+$PIN_BOX2.Width = 100
+$PIN_BOX2.Height = 20
+$PIN_BOX2.location = new-object system.drawing.point(221,223)
+$PIN_BOX2.Font = "Microsoft Sans Serif,10"
+$Title.controls.Add($PIN_BOX2)
+
+$label5 = New-Object system.windows.Forms.Label
+$label5.Text = "Please enter your PIN number:"
+$label5.AutoSize = $true
+$label5.Width = 25
+$label5.Height = 10
+$label5.location = new-object system.drawing.point(24,180)
+$label5.Font = "Microsoft Sans Serif,10"
+$Title.controls.Add($label5)
+
+$label6 = New-Object system.windows.Forms.Label
+$label6.Text = "Re-enter your PIN number:"
+$label6.AutoSize = $true
+$label6.Width = 25
+$label6.Height = 10
+$label6.location = new-object system.drawing.point(24,223)
+$label6.Font = "Microsoft Sans Serif,10"
+$Title.controls.Add($label6)
+
+$textBox8 = New-Object system.windows.Forms.TextBox
+$textBox8.Width = 304
+$textBox8.Height = 100
+$textBox8.location = new-object system.drawing.point(18,310)
+$textBox8.Font = "Microsoft Sans Serif,10"
+$textBox8.Multiline = $true
+$Title.controls.Add($textBox8)
+
+$button = New-Object system.windows.Forms.Button
+$button.Text = "ENCRYPT"
+$button.Width = 165
+$button.Height = 29
+$button.Add_Click({
+
+#The fun part. Checkes inputs and encrypting
+    if (!$PIN_Box){
+        $textBox8.Text = "You didn't enter the PIN!"
+        }
+    if (!$PIN_BOX2){
+        $textBox8.Text = "You didn't enter the PIN again!"
+        }
+    if (!$PIN_BOX -and !$PIN_Box2){
+        $textBox8.Text = "Please enter your PINs"
+        }
+    if ($PIN_Box.Text.Length -and $PIN_BOX2.Text.Length -lt 8){
+        $textBox8.Text = "Your PIN is illeagel. Please type it again"
+        }
+    if ($PIN_Box.Text -ne $PIN_BOX2.Text){
+        $textBox8.Text = "Your PINs Don't match. Please type it again"
+        }
+    if ($volumeStatus -cmatch "FullyEncrypted" -and $BitlockerStatus -cmatch "On"){
+        $label2.Text = "Already encrypted! You can close this window."
+        Write-Host "Already encrypted ^^"
+                Wait-Event -TimeoutSec 6
+                exit;
+            }
+    if ($TPMstatus -cmatch "False"){
+                $label2.Text = "No TPM identified in your Computer. Please contact the support."
+                Write-Host "No TPM."
+                Wait-Event -TimeoutSec 6
+                exit
+            }
+    if ($PIN_Box.Text -cmatch $PIN_BOX2.Text -and $PIN_BOX2.Text -cmatch $PIN_Box.Text -and $PIN_Box.Text.Length -ge 8 -and $volumeStatus -cmatch "False" -and $BitlockerStatus -cmatch "Off"){
+        $Encrypted = ConvertTo-SecureString $PIN_Box.Text -AsPlainText -Force
+        $textBox8.Text = "PIN has been verified. Proceeding."
+        Wait-Event -Timeout 1
+        manage-bde.exe -protectors -delete c:
+        if ($TPMstatus -cmatch "True"){
+            If ($OSmajor -cmatch "10"){
+                $textBox8.Text = "Encrypting Windows 10 with TPM."
+                encrypt
+            }
+            If ($OSmajor -match "6.3"){
+                $textBox8.Text = "Encrypting Windows 8.1 with TPM."
+                encrypt
+            }
+            If ($OSmajor -match "6.2"){
+                $textBox8.Text = "Encrypting Windows 8 with TPM."
+                encrypt
+            }
+            #if ($TPMstatus -eq "False"){
+            #    $label2.Text = "No TPM identified in your Computer. Please contact the support."
+            #    Wait-Event -Timeout 6
+            #    Exit-PSSession;
+                #Enable-BitLocker -MountPoint "C:"  -EncryptionMethod Aes128 -Password $Encrypted -PasswordProtector -RecoveryKeyPath \\172.16.1.231\Recovery_Keys\ -RecoveryKeyProtector
+            If ($OSmajor -le "6.1"){
+                $textBox8.Text = "Encrypting windows 7 with TPM."
+                encrypt7
+                }
+        }
+    }    
+})
+$button.location = new-object system.drawing.point(92,265)
+$button.Font = "Microsoft Sans Serif,10,style=Bold"
+$Title.controls.Add($button)
+[void]$Title.ShowDialog()
+$Title.Dispose()
+
+
+
+
+#############################################################################
