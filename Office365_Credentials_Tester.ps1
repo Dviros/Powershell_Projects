@@ -14,7 +14,7 @@ foreach($line in Get-Content $path\credentials.txt) {
                 Remove-PSSession $Session
             }
             else{
-            throw
+                throw
             }
         }
         catch{
