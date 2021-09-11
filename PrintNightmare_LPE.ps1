@@ -12,14 +12,18 @@ if (get-printer | Where-Object name -In ("\\printnightmare.gentilkiwi.com\Kiwi L
 if (get-printer | Where-Object name -In ("\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x86")){
 	Remove-Printer -Name "\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x86"
 	}
-	
-$password = ConvertTo-SecureString 'password' -AsPlainText -force
-$cred = New-Object System.Management.Automation.PSCredential ("20.188.56.147\gentilguest", $password)
-New-PSDrive -Name "gentilkiwi" -Root "\\printnightmare.gentilkiwi.com\print$" -PSProvider FileSystem -Credential $cred
 
+$serverIP = (Resolve-DnsName printnightmare.gentilkiwi.com).IP4Address
+$password = ConvertTo-SecureString 'password' -AsPlainText -force
+$cred = New-Object System.Management.Automation.PSCredential ("$serverIP\gentilguest", $password)
+New-PSDrive -Name "gentilkiwi" -Root "\\printnightmare.gentilkiwi.com\" -PSProvider FileSystem -Credential $cred
+Add-Printer -ConnectionName "\\printnightmare.gentilkiwi.com\Kiwi Legit Printer"
+
+<# Obsolete
 if ([System.Environment]::Is64BitOperatingSystem){
 	Add-Printer -ConnectionName "\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x64"
 	}
 else {
 	Add-Printer -ConnectionName "\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x86"
 	}
+#>
