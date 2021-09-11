@@ -10,11 +10,8 @@ rundll32 printui.dll,PrintUIEntry /in /q /n "\\printnightmare.gentilkiwi.com\Kiw
 #>
 
 
-if (get-printer | Where-Object name -In ("\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x64")){
-	Remove-Printer -Name "\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x64"
-	}
-if (get-printer | Where-Object name -In ("\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x86")){
-	Remove-Printer -Name "\\printnightmare.gentilkiwi.com\Kiwi Legit Printer - x86"
+if (get-printer | Where-Object name -In ("\\printnightmare.gentilkiwi.com\Kiwi Legit Printer")){
+	Remove-Printer -Name "\\printnightmare.gentilkiwi.com\Kiwi Legit Printer"
 	}
 
 $serverIP = (Resolve-DnsName printnightmare.gentilkiwi.com).IP4Address
